@@ -1,0 +1,56 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block title %}Inicio{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="card shadow-md">
+        <div class="card-header text-center">
+            <h1>Bienvenido, {{ request.user.username }}</h1>
+            <div class="action-buttons mt-3">
+                <form method="post" action="{% url 'logout' %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger btn-sm">Cerrar sesión</button>
+                </form>
+                <a href="{% url 'inspeccion' %}" class="btn btn-primary btn-sm">Nueva Inspección</a>
+            </div>
+        </div>
+
+        <div class="card-body table-responsive">
+            <table class="table-modern">
+                <thead>
+                    <tr>
+                        <th>N° Registro</th>
+                        <th>Fecha</th>
+                        <th>Zona</th>
+                        <th>Responsable</th>
+                        <th>Estado</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in registros %}
+                    <tr>
+                        <td>{{ r.NumeroRegistro }}</td>
+                        <td>{{ r.FechaInspeccion }}</td>
+                        <td>{{ r.ZonaInspeccion }}</td>
+                        <td>{{ r.CodigoResponsable }}</td>
+                        <td>{{ r.EstadoRegistro }}</td>
+                        <td>
+                            <a href="{% url 'inspeccion_modificar' r.NumeroRegistro %}" class="btn btn-edit btn-sm">
+                                Modificar
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6">No hay registros</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

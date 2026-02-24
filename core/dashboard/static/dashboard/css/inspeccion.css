@@ -1,0 +1,14 @@
+#tabla-body select {
+    min-width: 140px;
+    width: 100%;
+    white-space: normal;
+}
+
+#tabla-body td {
+    vertical-align: middle;
+}
+
+#tabla-body select.form-select-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
+}

@@ -1,0 +1,134 @@
+/* Contenedor general */
+.container {
+    max-width: 1200px !important;
+    margin: 40px auto !important;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Card */
+.card.shadow-md {
+    border-radius: 16px !important;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12) !important;
+    background-color: #fff !important;
+    overflow: hidden !important;
+}
+
+.card-header {
+    background-color: #f5f5f5 !important;
+    padding: 20px !important;
+    border-bottom: 1px solid #e0e0e0 !important;
+}
+
+.card-header h1 {
+    font-size: 2rem !important;
+    font-weight: 600 !important;
+    color: #333 !important;
+    margin-bottom: 10px !important;
+}
+
+.action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+/* Botones */
+.btn {
+    border-radius: 10px !important;
+    padding: 8px 20px !important;
+    font-weight: 500 !important;
+    transition: all 0.3s ease !important;
+}
+
+.btn-sm {
+    padding: 6px 12px !important;
+    font-size: 0.85rem !important;
+}
+
+.btn-primary {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+    color: #fff !important;
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7 !important;
+    border-color: #0a58ca !important;
+}
+
+.btn-danger {
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+    color: #fff !important;
+}
+
+.btn-danger:hover {
+    background-color: #bb2d3b !important;
+    border-color: #b02a37 !important;
+}
+
+.btn-edit {
+    background-color: #198754 !important;
+    color: #fff !important;
+    border: none !important;
+}
+
+.btn-edit:hover {
+    background-color: #157347 !important;
+}
+
+/* Tabla moderna */
+.table-modern {
+    width: 100% !important;
+    border-collapse: separate !important;
+    border-spacing: 0 10px !important;
+    font-size: 0.95rem !important;
+}
+
+.table-modern th, .table-modern td {
+    padding: 12px 15px !important;
+    text-align: center !important;
+    border: none !important;
+}
+
+.table-modern thead th {
+    background-color: #f8f9fa !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+}
+
+.table-modern tbody tr {
+    background-color: #ffffff !important;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08) !important;
+    margin-bottom: 10px !important;
+    display: table-row !important;
+    border-radius: 10px !important;
+}
+
+.table-modern tbody tr:hover {
+    background-color: #f1f3f5 !important;
+}
+
+/* Mensajes vacíos */
+.table-modern tbody tr td[colspan="6"] {
+    text-align: center !important;
+    color: #888 !important;
+    font-style: italic !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .card-header h1 {
+        font-size: 1.5rem !important;
+    }
+
+    .table-modern th, .table-modern td {
+        padding: 8px !important;
+        font-size: 0.85rem !important;
+    }
+
+    .btn, .btn-sm {
+        padding: 6px 10px !important;
+        font-size: 0.8rem !important;
+    }
+}
