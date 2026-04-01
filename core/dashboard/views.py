@@ -1,13 +1,13 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden,JsonResponse
 from .models import InspeccionCampo, InspeccionCampoDetalle , Ubigeo2, Ubicacion
-from django.http import JsonResponse
 from django.db import transaction
 from django.utils import timezone
 from django.contrib import messages
-from .models import InspeccionCampo, InspeccionCampoDetalle, Ubicacion
 from django.db.models import Max
+from django.http import JsonResponse
+from datetime import date
 
 @login_required
 def home(request):
@@ -38,21 +38,40 @@ def ajax_provincias(request):
 def ajax_ubicaciones(request):
     dep = request.GET.get('dep')
     prov = request.GET.get('prov')
+    dist = request.GET.get('dist')  # 🔥 NUEVO
 
-    data = Ubicacion.objects.filter(
-        CodigoDepartamento=dep,
-        CodigoProvincia=prov
-    ).values(
+    filtros = {
+        "CodigoDepartamento": dep,
+        "CodigoProvincia": prov
+    }
+
+    # 🔥 SOLO SI ES LIMA LIMA → FILTRA DISTRITO
+    if dep == "15" and prov == "01" and dist:
+        filtros["CodigoDistrito"] = dist
+
+    data = Ubicacion.objects.filter(**filtros).values(
         'CodigoUbicacion',
         'CodigoInterno',
         'DireccionComercial',
         'CodigoProvincia',
         'CodigoDistrito',
-        'CodigoTipoElemento',
+        'CodigoTipoElemento',   # 👈 NUEVO
         'Medidas'
     )
 
-    return JsonResponse(list(data), safe=False)
+    result = []
+    for d in data:
+        result.append({
+            "CodigoUbicacion": d["CodigoUbicacion"],
+            "CodigoInterno": d["CodigoInterno"],
+            "DireccionComercial": d["DireccionComercial"],
+            "CodigoProvincia": d["CodigoProvincia"].strip() if d["CodigoProvincia"] else "",
+            "CodigoDistrito": d["CodigoDistrito"].strip() if d["CodigoDistrito"] else "",
+            "CodigoTipoElemento": d.get("CodigoTipoElemento"),  # 👈 NUEVO
+            "Medidas": d.get("Medidas"),                        # 👈 NUEVO
+        })
+
+    return JsonResponse(result, safe=False)
 
 @login_required
 def inspeccion_campo(request):
@@ -84,12 +103,17 @@ def inspeccion_campo(request):
                 .order_by('CodigoDistrito','CodigoUbicacion')
             )
     context = {
+        "usuario_actual": request.user,
         'departamentos' : departamentos,
         'provincias' : provincias,
-        'ubicaciones' : ubicaciones
+        'ubicaciones' : ubicaciones,
+        "fecha_hoy": date.today()
     }
 
     return render(request, "dashboard/inspeccion_operador.html", context)
+
+def to_bool(v):
+    return str(v).lower() == "true"
 @login_required
 @transaction.atomic
 def guardar_inspeccion(request):
@@ -114,40 +138,32 @@ def guardar_inspeccion(request):
     fecha = request.POST.get("fecha") or timezone.now().date()
     departamento = request.POST.get("CodigoDepartamento")
     responsable = request.POST.get("responsable")
-    
 
     # =============================
     # CREAR O ACTUALIZAR CABECERA
     # =============================
-    inspeccion = InspeccionCampo.objects.filter(
-        NumeroRegistro=numero
-    ).first()
+    inspeccion, creada = InspeccionCampo.objects.get_or_create(
+        NumeroRegistro=numero,
+        defaults={
+            "FechaInspeccion": fecha,
+            "ZonaInspeccion": zona,
+            "CodigoResponsable": responsable,
+            "UsuarioCreacion": usuario,
+            "FechaCreacion": timezone.now().date(),
+            "EstadoRegistro": "00"
+        }
+    )
 
-    if inspeccion:
+    if not creada:
         inspeccion.ZonaInspeccion = zona
         inspeccion.FechaInspeccion = fecha
-        inspeccion.CodigoResponsable = responsable   # ← FALTABA ESTO
+        inspeccion.CodigoResponsable = responsable
         inspeccion.save()
 
-        # BORRAR DETALLES VIEJOS
-        InspeccionCampoDetalle.objects.filter(
-            NumeroRegistro=inspeccion
-        ).delete()
-
-    else:
-        # CREAR
-        inspeccion = InspeccionCampo.objects.create(
-            NumeroRegistro=numero,
-            FechaInspeccion=fecha,
-            ZonaInspeccion=zona,
-            CodigoResponsable=responsable,  # ← FALTABA ESTO
-            UsuarioCreacion=usuario,
-            FechaCreacion=timezone.now().date(),
-            EstadoRegistro="00"
-        )
     # =============================
-    # LEER ARRAYS (SIEMPRE)
+    # LEER ARRAYS
     # =============================
+    ids = request.POST.getlist("id_detalle[]")
     ubicaciones = request.POST.getlist("codigo_ubicacion[]")
     estados = request.POST.getlist("estado_elemento[]")
     puntos = request.POST.getlist("punto_luz[]")
@@ -164,37 +180,63 @@ def guardar_inspeccion(request):
     def clean(v):
         return None if v in ["", None] else v
 
-    # =============================
-    # CREAR DETALLES
-    # =============================
-    detalles_objs = []
+    def get_val(lista, i):
+        return lista[i] if i < len(lista) else None
 
+    # =============================
+    # IDS EXISTENTES EN BD
+    # =============================
+    ids_bd = set(
+        InspeccionCampoDetalle.objects.filter(
+            NumeroRegistro=inspeccion
+        ).values_list("IdDetalle", flat=True)
+    )
+
+    ids_form = set(int(i) for i in ids if i and i.isdigit())
+
+    # =============================
+    # ELIMINAR LOS QUE YA NO VIENEN
+    # =============================
+    ids_eliminar = ids_bd - ids_form
+
+    if ids_eliminar:
+        InspeccionCampoDetalle.objects.filter(
+            IdDetalle__in=ids_eliminar
+        ).delete()
+
+    # =============================
+    # CREAR / ACTUALIZAR
+    # =============================
     for i, cod in enumerate(ubicaciones):
-        if not cod:
-            continue
 
-        detalles_objs.append(
-            InspeccionCampoDetalle(
-                NumeroRegistro=inspeccion,
-                CodigoElementoRef=cod,
-                Ubicacion=cod,
-                CodigoDepartamento=departamento, 
-                CodigoProvincia=provincias[i] if i < len(provincias) else "",
-                CodigoDistrito=distritos[i] if i < len(distritos) else "",
-                EstadoElemento=clean(estados[i]) if i < len(estados) else None,
-                PuntoLuz=clean(puntos[i]) if i < len(puntos) else None,
-                NumeroReflectores=clean(reflectores[i]) if i < len(reflectores) else None,
-                EstadoReflectores=clean(estados_reflectores[i]) if i < len(estados_reflectores) else None,
-                PublicidadLona=clean(lona[i]) if i < len(lona) else None,
-                ControlPublicidad=clean(control[i]) if i < len(control) else None,
-                EstadoLona=clean(estado_lona[i]) if i < len(estado_lona) else None,
-                EstadoLogo=clean(estado_logo[i]) if i < len(estado_logo) else None,
-                Observaciones=clean(observaciones[i]) if i < len(observaciones) else None,
-            )
-        )
+        id_det = get_val(ids, i)
 
-    if detalles_objs:
-        InspeccionCampoDetalle.objects.bulk_create(detalles_objs)
+        data = {
+            "NumeroRegistro": inspeccion,
+            "CodigoElementoRef": cod,
+            "Ubicacion": cod,
+            "CodigoDepartamento": departamento,
+            "CodigoProvincia": get_val(provincias, i),
+            "CodigoDistrito": get_val(distritos, i),
+            "EstadoElemento": clean(get_val(estados, i)),
+            "PuntoLuz": clean(get_val(puntos, i)),
+            "NumeroReflectores": clean(get_val(reflectores, i)),
+            "EstadoReflectores": clean(get_val(estados_reflectores, i)),
+            "PublicidadLona": get_val(lona, i) or "",
+            "ControlPublicidad": clean(get_val(control, i)),
+            "EstadoLona": clean(get_val(estado_lona, i)),
+            "EstadoLogo": clean(get_val(estado_logo, i)),
+            "Observaciones": clean(get_val(observaciones, i)),
+        }
+
+        if id_det:
+            # 🔥 UPDATE
+            InspeccionCampoDetalle.objects.filter(
+                IdDetalle=id_det
+            ).update(**data)
+        else:
+            # 🔥 CREATE
+            InspeccionCampoDetalle.objects.create(**data)
 
     messages.success(request, f"Inspección {numero} guardada correctamente")
     return redirect("home")
@@ -211,13 +253,25 @@ def inspeccion_modificar(request, numero_registro):
             f"No existe la inspección {numero_registro}"
         )
         return redirect("home")
-
     # ==============================
     # DETALLES
     # ==============================
     detalles = InspeccionCampoDetalle.objects.filter(
-        NumeroRegistro=inspeccion
-    ).order_by('IdDetalle')
+    NumeroRegistro=inspeccion
+).order_by("IdDetalle")
+    codigos = [d.Ubicacion for d in detalles]
+
+    ubicaciones_dict = {
+        u.CodigoUbicacion: u
+        for u in Ubicacion.objects.filter(CodigoUbicacion__in=codigos)
+    }
+
+    for det in detalles:
+        u = ubicaciones_dict.get(det.Ubicacion)
+
+        det.TipoElemento = u.CodigoTipoElemento if u else ""
+        det.Medidas = u.Medidas if u else ""
+        det.Direccion = u.DireccionComercial if u else ""
 
     # ==============================
     # DEPARTAMENTOS (LIMPIOS)
@@ -245,19 +299,22 @@ def inspeccion_modificar(request, numero_registro):
     provincia_seleccionada = None
     provincias = []
     ubicaciones = []
-
+    zona_calculada = ""
+    
     # ==============================
     # SI EXISTEN DETALLES
     # ==============================
-    if detalles.exists():
-        first = detalles.first()
+    if detalles:
+        first = detalles[0]
 
         dep_seleccionado = first.CodigoDepartamento.strip()
         provincia_seleccionada = first.CodigoProvincia.strip()
+
         if dep_seleccionado == "15" and provincia_seleccionada == "01":
             zona_calculada = "L"
         else:
             zona_calculada = "P"
+
         provincias_raw = (
             Ubigeo2.objects.filter(
                 CodigoDepartamento=dep_seleccionado,
@@ -269,7 +326,6 @@ def inspeccion_modificar(request, numero_registro):
             .order_by('Nombre')
         )
 
-        # 🔥 LIMPIAMOS TAMBIÉN PROVINCIAS
         provincias = [
             {
                 "CodigoProvincia": p["CodigoProvincia"].strip(),
@@ -277,8 +333,9 @@ def inspeccion_modificar(request, numero_registro):
             }
             for p in provincias_raw
         ]
-
     context = {
+    "usuario_actual": request.user,
+    "fecha_hoy": date.today(),
     "dep_seleccionado": dep_seleccionado,
     "provincia_seleccionada": provincia_seleccionada,
     "zona_calculada": zona_calculada,
@@ -294,3 +351,19 @@ def inspeccion_modificar(request, numero_registro):
         "dashboard/inspeccion_operador.html",
         context
     )
+def ajax_distritos(request):
+    dep = request.GET.get('dep')
+    prov = request.GET.get('prov')
+
+    distritos = (
+        Ubigeo2.objects
+        .filter(
+            CodigoDepartamento=dep,
+            CodigoProvincia=prov
+        )
+        .exclude(CodigoDistrito='00')
+        .values('CodigoDistrito', 'Nombre')
+        .order_by('Nombre')
+    )
+
+    return JsonResponse(list(distritos), safe=False)

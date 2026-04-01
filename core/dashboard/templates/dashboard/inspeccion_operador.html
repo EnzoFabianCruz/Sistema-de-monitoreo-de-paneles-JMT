@@ -3,9 +3,9 @@
 {% block title %}Inspección de Campo{% endblock %}
 
 {% block content %}
-<form method="POST" action="{% url 'guardar_inspeccion' %}">
-    {% csrf_token %}
 
+<form method="POST"action="{% url 'guardar_inspeccion' %}" data-modo="{{ modo_modificacion|yesno:'edicion,crear' }}" {% if modo_modificacion %}data-modo="edicion"{% endif %}>
+    {% csrf_token %}
     <div class="container-fluid p-3">
 
         <!-- ENCABEZADO -->
@@ -23,7 +23,7 @@
                     <input type="hidden" name="NumeroRegistro" value="{{ inspeccion.NumeroRegistro }}">
                     <div class="col-md-4">
                         <label class="form-label">Fecha</label>
-                        <input type="date" name="fecha" class="form-control" value="{{ inspeccion.FechaInspeccion|date:'Y-m-d' }}">
+                        <input type="date" name="fecha" class="form-control"value="{{ inspeccion.FechaInspeccion|default:fecha_hoy|date:'Y-m-d' }}">
                     </div>
 
                     <div class="col-md-4">
@@ -31,13 +31,13 @@
 
                         <select class="form-select" id="departamento" name="CodigoDepartamento">
                             <option value="">Seleccione Departamento</option>
-                                    {% for dep in departamentos %}
-                                        <option value="{{ dep.CodigoDepartamento }}"
-                                            {% if dep.CodigoDepartamento == dep_seleccionado %}selected{% endif %}>
-                                            {{ dep.Nombre }}
-                                        </option>
-                                    {% endfor %}
-                                </select>
+                            {% for dep in departamentos %}
+                            <option value="{{ dep.CodigoDepartamento }}"
+                                {% if dep.CodigoDepartamento == dep_seleccionado %}selected{% endif %}>
+                                {{ dep.Nombre }}
+                            </option>
+                            {% endfor %}
+                        </select>
 
                         <select class="form-select mt-1" id="provincia" name="CodigoProvincia" data-selected="{{ provincia_seleccionada }}">
                                     <option value="">Seleccione Provincia</option>
@@ -50,19 +50,30 @@
                                 {% endfor %}
                             {% endif %}
                         </select>
+                        <select class="form-select mt-1" id="distrito" name="CodigoDistrito" data-selected="{{ distrito_seleccionado }}" disabled>
+                        <option value="">Seleccione Distrito</option>
+                        {% if distritos %}
+                            {% for dist in distritos %}
+                                <option value="{{ dist.CodigoDistrito }}"
+                                    {% if dist.CodigoDistrito == distrito_seleccionado %}selected{% endif %}>
+                                    {{ dist.Nombre }}
+                                </option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
                     </div>
 
                     <div class="col-md-4">
                         <label class="form-label">Responsable</label>
-                        <input type="text" name="responsable" class="form-control" value="{{ inspeccion.CodigoResponsable }}">
+                        <input type="text" name="responsable" class="form-control" value="{{ inspeccion.CodigoResponsable|default:usuario_actual.username }}" readonly>
                     </div>
 
                     <div class="col-md-4">
                         <label>Tipo de Zona</label>
-                        <select name="ZonaInspeccion" class="form-select" required>
+                        <select id="zona" name="ZonaInspeccion" class="form-select" required>
                             <option value="">Seleccione</option>
-                            <option value="L" {% if inspeccion.ZonaInspeccion == "L" %}selected{% endif %}>Lima</option>
-                            <option value="P" {% if inspeccion.ZonaInspeccion == "P" %}selected{% endif %}>Provincia</option>
+                            <option value="L" {% if zona_calculada == "L" %}selected{% endif %}>Lima</option>
+                            <option value="P" {% if zona_calculada == "P" %}selected{% endif %}>Provincia</option>
                         </select>
                     </div>
 
@@ -76,14 +87,12 @@
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-bordered table-sm mb-0">
-                        <thead class="table-light">
+                        <thead class="table-dark text-center">
                             <tr>
+                                <th>✔</th>
                                 <th>#</th>
-                                <th>Código</th>
                                 <th>Ubicación</th>
                                 <th>Dirección</th>
-                                <th>Provincia</th>
-                                <th>Distrito</th>
                                 <th>Elemento</th>
                                 <th>Medidas</th>
                                 <th>Estado Elemento</th>
@@ -102,19 +111,13 @@
                             {% if detalles %}
                                 {% for det in detalles %}
                                 <tr>
+                                    <input type="hidden" name="id_detalle[]" value="{{ det.IdDetalle }}">
+                                    <td><input type="checkbox" class="fila-check" {% if modo_modificacion %}checked{% endif %}></td>
                                     <td>{{ forloop.counter }}</td>
                                     <td>{{ det.CodigoElementoRef }}</td>
-                                    <td>
-                                        {{ det.Ubicacion }}
-                                        <input type="hidden" name="codigo_ubicacion[]" value="{{ det.Ubicacion }}">
-                                        <input type="hidden" name="codigo_provincia[]" value="{{ det.CodigoProvincia }}">
-                                        <input type="hidden" name="codigo_distrito[]" value="{{ det.CodigoDistrito }}">
-                                    </td>
                                     <td>{{ det.Direccion }}</td>
-                                    <td>{{ det.CodigoProvincia }}</td>
-                                    <td>{{ det.CodigoDistrito }}</td>
-                                    <td>{{ det.CodigoElementoRef }}</td>
-                                    <td>—</td>
+                                    <td>{{ det.CodigoTipoElemento }}</td>
+                                    <td>{{ det.Medidas }}</td>
                                     <td>
                                         <select name="estado_elemento[]" class="form-select form-select-sm">
                                             <option value="">Seleccione</option>
@@ -125,8 +128,8 @@
                                     <td>
                                         <select name="punto_luz[]" class="form-select form-select-sm">
                                             <option value="">Seleccione</option>
-                                            <option value="1" {% if det.PuntoLuz|stringformat:"s" == "1" %}selected{% endif %}>SI</option>
-                                            <option value="0" {% if det.PuntoLuz|stringformat:"s" == "0" %}selected{% endif %}>NO</option>
+                                            <option value="1" {% if det.PuntoLuz %}selected{% endif %}>SI</option>
+                                            <option value="0" {% if not det.PuntoLuz %}selected{% endif %}>NO</option>
                                         </select>
                                     </td>
                                     <td>
@@ -142,8 +145,8 @@
                                     <td>
                                         <select name="publicidad_lona[]" class="form-select form-select-sm">
                                             <option value="">Seleccione</option>
-                                            <option value="1" {% if det.PublicidadLona|stringformat:"s" == "1" %}selected{% endif %}>SI</option>
-                                            <option value="0" {% if det.PublicidadLona|stringformat:"s" == "0" %}selected{% endif %}>NO</option>
+                                            <option value="SI" {% if det.PublicidadLona == "SI" %}selected{% endif %}>SI</option>
+                                            <option value="NO" {% if det.PublicidadLona == "NO" %}selected{% endif %}>NO</option>
                                         </select>
                                     </td>
                                     <td>
@@ -197,9 +200,14 @@
                 </div>
             </div>
         </div>
+        <div class="d-flex justify-content-between mt-2">
+            <button type="button" id="btn-limpiar" class="btn btn-outline-danger btn-sm">
+                Limpiar no seleccionados
+            </button>
 
-        <div class="text-end mt-2">
-            <button type="submit" class="btn btn-primary">Guardar Inspección</button>
+            <button type="submit" class="btn btn-primary btn-sm">
+                Guardar Inspección
+            </button>
         </div>
 
     </div>

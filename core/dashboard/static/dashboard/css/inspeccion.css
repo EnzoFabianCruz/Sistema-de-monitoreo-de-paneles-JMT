@@ -12,3 +12,19 @@
     padding: 0.25rem 0.5rem;
     font-size: 0.85rem;
 }
+.fila-activa {
+    background-color: #d1f7d6 !important;
+}
+#tabla-body tr:hover {
+    background-color: #f5f5f5;
+    cursor: pointer;
+}
+td, th {
+    vertical-align: middle;
+    text-align: center;
+}
+.form-select-sm,
+.form-control-sm {
+    padding: 2px 6px;
+    font-size: 12px;
+}
