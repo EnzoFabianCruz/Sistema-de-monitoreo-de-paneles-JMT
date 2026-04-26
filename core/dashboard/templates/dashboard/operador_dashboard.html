@@ -35,7 +35,7 @@
                         <td>{{ r.NumeroRegistro }}</td>
                         <td>{{ r.FechaInspeccion }}</td>
                         <td>{{ r.ZonaInspeccion }}</td>
-                        <td>{{ r.CodigoResponsable }}</td>
+                        <td>{{ r.UsuarioCreacion }}</td> 
                         <td>{{ r.EstadoRegistro }}</td>
                         <td>
                             <a href="{% url 'inspeccion_modificar' r.NumeroRegistro %}" class="btn btn-edit btn-sm">
@@ -45,7 +45,10 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6">No hay registros</td>
+                        <td colspan="6" class="text-center" style="padding: 20px; color: #666;">
+                            <b>No has creado ninguna inspección todavía.</b><br>
+                            Haz clic en "Nueva Inspección" para comenzar.
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>

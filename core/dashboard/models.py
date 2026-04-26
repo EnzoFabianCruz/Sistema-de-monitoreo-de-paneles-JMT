@@ -39,8 +39,6 @@ class InspeccionCampoDetalle(models.Model):
     CodigoDepartamento = models.CharField(max_length=2)
     CodigoProvincia = models.CharField(max_length=2)
     CodigoDistrito = models.CharField(max_length=2)
-    CodigoTipoElemento = models.CharField(max_length= 2)
-    Medidas = models.CharField(max_length= 50)
     EstadoElemento = models.CharField(max_length=2, null=True)
     PuntoLuz = models.BooleanField(null=True)
     NumeroReflectores = models.IntegerField(null=True)

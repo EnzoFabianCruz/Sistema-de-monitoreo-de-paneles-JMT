@@ -123,6 +123,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
         zonaSelect.value = (dep === "15" && prov === "01") ? "L" : "P";
     }
+    function renumerarFilas() {
+    const filas = tbody.querySelectorAll("tr");
+
+    filas.forEach((fila, index) => {
+        // Validamos que la fila tenga al menos 2 columnas antes de numerar
+        if (fila.children && fila.children.length > 1) {
+            fila.children[1].textContent = index + 1;
+        }
+    });
+}
 
     // =========================
     // CARGAR UBICACIONES
@@ -142,44 +152,67 @@ document.addEventListener("DOMContentLoaded", function () {
             })
             .catch(err => console.error("Error ubicaciones:", err));
     }
+function ordenarMarcados() {
 
- function cargarTabla(data) {
+        const filas = Array.from(tbody.querySelectorAll("tr"));
 
+        filas.sort((a, b) => {
+            const aCheck = a.querySelector(".fila-check")?.checked ? 1 : 0;
+            const bCheck = b.querySelector(".fila-check")?.checked ? 1 : 0;
+            return bCheck - aCheck;
+        });
+
+        tbody.innerHTML = "";
+        filas.forEach(f => tbody.appendChild(f));
+    }
+function cargarTabla(data) {
     const tbody = document.getElementById("tabla-body");
-
-    // ✅ obtener seleccionados actuales
     const seleccionados = new Set();
+    const mapaTipos = {
+        "01": "TORRE", "03": "OTRO", "04": "BANDEROLA", "06": "BANNER",
+        "07": "CAJA LUMINOSA", "08": "LOGO CHICO", "09": "LOGO GRANDE",
+        "10": "LUCES LED", "11": "MINIBANDEROLAS", "12": "MINIPOLAR",
+        "13": "PANEL", "14": "PANEL CARRETERO", "15": "PANEL MONUMENTAL",
+        "16": "PANEL PUBLICITARIO", "17": "PANEL VERTICAL", "18": "PANELETA",
+        "20": "PARCHE", "23": "PORTICO", "24": "POSTE BANDERA",
+        "25": "POSTE EN L", "26": "SEÑALETICAS", "27": "TORRE UNIPOLAR",
+        "28": "VINIL", "29": "VALLAS ALTAS", "30": "TORRE MINIPOLAR",
+        "31": "MEGAVALLA", "32": "TORRE TRIPOLAR", "36": "TROQUEL",
+        "37": "SEÑALIZADOR DE CALLE", "43": "LED - TORRE UNIPOLAR",
+        "44": "CAMION LED", "49": "TOTEM", "50": "LED - TORRE TRIPOLAR",
+        "52": "LED - TORRE MINIPOLAR", "53": "PANEL / BANDEROLA",
+        "54": "PANEL LED", "55": "VALLA LED", "56": "BASTIDOR"
+    };
+
     tbody.querySelectorAll("tr").forEach(tr => {
         const check = tr.querySelector(".fila-check");
         if (check && check.checked) {
-            seleccionados.add(tr.dataset.id);
+            const idUbicacion = tr.querySelector('input[name="codigo_ubicacion[]"]')?.value;
+            if (idUbicacion) seleccionados.add(idUbicacion);
         }
     });
 
     data.forEach((item) => {
-
-        // ❌ evitar duplicados
-        if (tbody.querySelector(`tr[data-id="${item.CodigoUbicacion}"]`)) {
-            return;
+        // Evitar duplicados
+        if (tbody.querySelector(`input[name="codigo_ubicacion[]"][value="${item.CodigoUbicacion}"]`)) {
+            return; 
         }
-
-        // ✅ mantener selección previa
-        const checked = seleccionados.has(item.CodigoUbicacion) ? "checked" : "";
-
+        const codigoLimpio = (item.CodigoTipoElemento || "").trim();
+        const descripcionVisual = mapaTipos[codigoLimpio] || codigoLimpio;
         const fila = `
-        
         <tr data-id="${item.CodigoUbicacion}">
-            <td><input type="checkbox" class="fila-check" ${checked}></td>
-            <td></td>
-
-            <td>${item.CodigoInterno || ""}</td>
+            <td>
+                <input type="checkbox" class="fila-check">
+                <input type="hidden" name="id_detalle[]" value="">
+            </td>
+            <td></td> 
+            <td>${item.CodigoInterno || ""}
                 <input type="hidden" name="codigo_ubicacion[]" value="${item.CodigoUbicacion}">
                 <input type="hidden" name="codigo_provincia[]" value="${item.CodigoProvincia}">
                 <input type="hidden" name="codigo_distrito[]" value="${item.CodigoDistrito}">
+            </td>
             <td>${item.DireccionComercial || ""}</td>
-
-
-            <td>${item.CodigoTipoElemento || ""}</td>
+            <td>${descripcionVisual}</td>
             <td>${item.Medidas || ""}</td>
 
             <td>
@@ -198,7 +231,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 </select>
             </td>
 
-            <td><input type="number" name="num_reflectores[]" class="form-control form-control-sm"></td>
+            <td>
+                <input type="number" name="num_reflectores[]" class="form-control form-control-sm" value="0">
+            </td>
 
             <td>
                 <select name="estado_reflectores[]" class="form-select form-select-sm">
@@ -211,8 +246,8 @@ document.addEventListener("DOMContentLoaded", function () {
             <td>
                 <select name="publicidad_lona[]" class="form-select form-select-sm">
                     <option value="">Seleccione</option>
-                    <option value="1">SI</option>
-                    <option value="0">NO</option>
+                    <option value="SI">SI</option>
+                    <option value="NO">NO</option>
                 </select>
             </td>
 
@@ -223,10 +258,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     <option value="02">Renovar</option>
                     <option value="03">Retiro</option>
                     <option value="04">Cambio</option>
-                    <option value="05">Mantenimiento</option>
-                    <option value="06">Urgente</option>
-                    <option value="07">Bloquear</option>
-                    <option value="08">Liberar</option>
                 </select>
             </td>
 
@@ -235,15 +266,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     <option value="">Seleccione</option>
                     <option value="01">En exhibición</option>
                     <option value="02">Vencido</option>
-                    <option value="03">Reservado</option>
-                    <option value="04">Observación</option>
-                    <option value="05">Dañado</option>
-                    <option value="06">Retiro</option>
-                    <option value="07">Fuera contrato</option>
-                    <option value="08">Suspendido</option>
                 </select>
             </td>
-
             <td>
                 <select name="estado_logo[]" class="form-select form-select-sm">
                     <option value="">Seleccione</option>
@@ -251,18 +275,13 @@ document.addEventListener("DOMContentLoaded", function () {
                     <option value="02">NO TIENE</option>
                 </select>
             </td>
-
             <td>
                 <input type="text" name="observaciones[]" class="form-control form-control-sm">
             </td>
         </tr>
         `;
-
-        // ✅ IMPORTANTE: NO reemplazar, solo agregar
         tbody.insertAdjacentHTML("beforeend", fila);
     });
-
-    ordenarMarcados();
     renumerarFilas();
 }
 
@@ -284,34 +303,6 @@ document.getElementById("btn-limpiar").addEventListener("click", function () {
     renumerarFilas();
 });
 
-    // =========================
-    // ORDENAR MARCADOS ARRIBA
-    // =========================
-    function ordenarMarcados() {
-
-        const filas = Array.from(tbody.querySelectorAll("tr"));
-
-        filas.sort((a, b) => {
-            const aCheck = a.querySelector(".fila-check")?.checked ? 1 : 0;
-            const bCheck = b.querySelector(".fila-check")?.checked ? 1 : 0;
-            return bCheck - aCheck;
-        });
-
-        tbody.innerHTML = "";
-        filas.forEach(f => tbody.appendChild(f));
-    }
-
-    // =========================
-    // NUMERAR FILAS
-    // =========================
-    function renumerarFilas() {
-
-        const filas = tbody.querySelectorAll("tr");
-
-        filas.forEach((fila, index) => {
-            fila.children[1].textContent = index + 1;
-        });
-    }
 
 if (modoEdicion) {
     document.querySelectorAll("#tabla-body .fila-check").forEach(check => {

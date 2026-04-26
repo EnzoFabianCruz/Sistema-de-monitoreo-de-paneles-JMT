@@ -19,7 +19,7 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('users.urls')),
     path('', include("accounts.urls")),
-    path('', include("dashboard.urls"))
+    path('usuarios/', include('users.urls')), # <--- Ahora la URL será /usuarios/gestion-usuarios/
+    path('', include('dashboard.urls')),
 ]
