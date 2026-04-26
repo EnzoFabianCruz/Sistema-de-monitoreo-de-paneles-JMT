@@ -1,0 +1,94 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body d-flex justify-content-between align-items-center bg-dark text-white">
+            <div>
+                <h4 class="mb-0">Inspección de Campo: {{ inspeccion.NumeroRegistro }}</h4>
+                <small class="text-light">Operador: {{ inspeccion.UsuarioCreacion }} | Fecha: {{ inspeccion.FechaCreacion|date:"d/m/Y H:i" }}</small>
+            </div>
+            <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-light btn-sm">Volver al Panel</a>
+        </div>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Detalle de Paneles Inspeccionados</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-sm mb-0">
+                    <thead class="table-secondary text-center">
+                        <tr>
+                            <th>#</th>
+                            <th>Ubicación</th>
+                            <th>Dirección</th>
+                            <th>Elemento</th>
+                            <th>Medidas</th>
+                            <th>Estado Elemento</th>
+                            <th>Punto Luz</th>
+                            <th>Reflectores</th>
+                            <th>Estado Reflectores</th>
+                            <th>Lona</th>
+                            <th>Control</th>
+                            <th>Estado Lona</th>
+                            <th>Logo</th>
+                            <th>Obs.</th>
+                        </tr>
+                    </thead>
+                                        <tbody id="tabla-body">
+                        {% for det in detalles %}
+                        <tr>
+                            
+                            <td>{{ forloop.counter }}</td>
+                            <td class="fw-bold">{{ det.CodigoInterno }}</td>
+                            <td>{{ det.DireccionComercial }}</td>
+                            <td>{{ det.DescripcionVisual }}</td>
+                            <td>{{ det.Medidas }}</td>
+
+                            <td class="text-center">
+                                {% if det.EstadoElemento == '01' %}
+                                    <span class="badge bg-success">Encendido</span>
+                                {% elif det.EstadoElemento == '02' %}
+                                    <span class="badge bg-danger">Apagado</span>
+                                {% else %}
+                                    {{ det.EstadoElemento|default:"-" }}
+                                {% endif %}
+                            </td>
+
+                            <td class="text-center">{{ det.PuntoLuz|yesno:"SI,NO" }}</td>
+
+                            <td class="text-center">{{ det.NumeroReflectores|default:"0" }}</td>
+
+                            <td class="text-center">
+                                {% if det.EstadoReflectores == '01' %}Encendidos{% elif det.EstadoReflectores == '02' %}Apagados{% else %}-{% endif %}
+                            </td>
+
+                            <td class="text-center">{{ det.PublicidadLona|default:"-" }}</td>
+
+                            <td><small>{{ det.ControlPublicidad|default:"-" }}</small></td>
+
+                            <td><small>{{ det.EstadoLona|default:"-" }}</small></td>
+
+                            <td class="text-center">
+                                {% if det.EstadoLogo == '01' %}TIENE{% else %}NO{% endif %}
+                            </td>
+
+                            <td><small>{{ det.Observaciones|default:"-" }}</small></td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="14" class="text-center text-muted py-3">
+                                No hay paneles registrados en esta inspección.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -110,13 +110,18 @@
                         <tbody id="tabla-body">
                             {% if detalles %}
                                 {% for det in detalles %}
-                                <tr>
-                                    <input type="hidden" name="id_detalle[]" value="{{ det.IdDetalle }}">
-                                    <td><input type="checkbox" class="fila-check" {% if modo_modificacion %}checked{% endif %}></td>
+                                <tr>    
+                                    <td><input type="checkbox" class="fila-check" checked> 
+                                        <input type="hidden" name="id_detalle[]" value="{{ det.IdDetalle }}"> </td>
                                     <td>{{ forloop.counter }}</td>
-                                    <td>{{ det.CodigoElementoRef }}</td>
+                                    <td>
+                                        {{ det.CodigoInterno }}
+                                        <input type="hidden" name="codigo_ubicacion[]" value="{{ det.CodigoUbicacion }}">
+                                        <input type="hidden" name="codigo_provincia[]" value="{{ det.CodigoProvincia }}">
+                                        <input type="hidden" name="codigo_distrito[]" value="{{ det.CodigoDistrito }}">
+                                    </td>
                                     <td>{{ det.Direccion }}</td>
-                                    <td>{{ det.CodigoTipoElemento }}</td>
+                                    <td>{{ det.DescripcionVisual }}</td>
                                     <td>{{ det.Medidas }}</td>
                                     <td>
                                         <select name="estado_elemento[]" class="form-select form-select-sm">

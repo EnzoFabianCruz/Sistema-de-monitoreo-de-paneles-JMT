@@ -14,7 +14,7 @@ def login_view(request):
         if user is not None:
             login(request, user)
             if user.groups.filter(name="Administrador").exists():
-                return redirect("admin")
+                return redirect("admin_dashboard")
             else:
                 return redirect("home")
         
