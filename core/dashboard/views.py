@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden,JsonResponse
-from .models import InspeccionCampo, InspeccionCampoDetalle , Ubigeo2, Ubicacion
+from .models import InspeccionCampo, InspeccionCampoDetalle , Ubigeo2, Ubicacion,FotoDetalle
 from django.db import transaction
 from django.utils import timezone
 from django.contrib import messages
@@ -13,6 +13,7 @@ from django.db.models.functions import Trim
 from django.db.models.functions import Trim
 from django.contrib.auth.decorators import login_required
 from .models import InspeccionCampo
+import os
 
 @login_required
 def home(request):
@@ -242,11 +243,28 @@ def guardar_inspeccion(request):
         # Decisión: Si el ID viene del form y no está vacío, es UPDATE
         if id_form and str(id_form).strip().isdigit():
             InspeccionCampoDetalle.objects.filter(IdDetalle=id_form).update(**data_detalle)
+            detalle = InspeccionCampoDetalle.objects.get(IdDetalle=id_form)  # ← agregar esta línea
         else:
-            # Es una fila nueva inyectada por JS
-            InspeccionCampoDetalle.objects.create(**data_detalle)
+            detalle = InspeccionCampoDetalle.objects.create(**data_detalle)  # ← asignar a detalle
 
+        fotos_nuevas = request.FILES.getlist(f'fotos_{cod_clean}[]')
+        fotos_a_borrar = request.POST.getlist(f'fotos_borrar_{cod_clean}[]')  # opcional: IDs a eliminar individualmente
+
+        # Eliminar solo las fotos marcadas explícitamente para borrar
+        for foto_id in fotos_a_borrar:
+            try:
+                foto_obj = FotoDetalle.objects.get(IdFoto=foto_id)
+                if foto_obj.imagen and os.path.isfile(foto_obj.imagen.path):
+                    os.remove(foto_obj.imagen.path)
+                foto_obj.delete()
+            except FotoDetalle.DoesNotExist:
+                pass
+
+        # Agregar las fotos nuevas SIN borrar las existentes
+        for foto in fotos_nuevas:
+            FotoDetalle.objects.create(detalle=detalle, imagen=foto)
     messages.success(request, f"Inspección {numero} guardada correctamente")
+    
     return redirect("home")
 @login_required
 def inspeccion_modificar(request, numero_registro):
@@ -279,7 +297,7 @@ def inspeccion_modificar(request, numero_registro):
     # ==============================
     # DETALLES
     # ==============================
-    detalles = InspeccionCampoDetalle.objects.filter(NumeroRegistro=inspeccion).order_by("IdDetalle")
+    detalles = InspeccionCampoDetalle.objects.filter(NumeroRegistro=inspeccion).order_by("IdDetalle").prefetch_related('fotos')
     codigos = [d.Ubicacion for d in detalles]
 
     ubicaciones_dict = {
@@ -295,6 +313,7 @@ def inspeccion_modificar(request, numero_registro):
         det.Direccion = u.DireccionComercial if u else ""
         det.CodigoInterno = u.CodigoInterno if u else ""
         codigo_limpio = str(det.TipoElemento).strip()
+        det.CodigoUbicacion = det.Ubicacion
         det.DescripcionVisual = MAPA_TIPOS.get(codigo_limpio, codigo_limpio)
     # ==============================
     # DEPARTAMENTOS (LIMPIOS)
@@ -404,3 +423,16 @@ def operador_dashboard(request):
     return render(request, 'dashboard/operador_dashboard.html', {
         'inspecciones': inspecciones
     })
+
+@login_required
+def borrar_foto(request, foto_id):
+    if request.method != "POST":
+        return JsonResponse({"error": "Método no permitido"}, status=405)
+    try:
+        foto = FotoDetalle.objects.get(IdFoto=foto_id)
+        if foto.imagen and os.path.isfile(foto.imagen.path):
+            os.remove(foto.imagen.path)
+        foto.delete()
+        return JsonResponse({"ok": True})
+    except FotoDetalle.DoesNotExist:
+        return JsonResponse({"error": "Foto no encontrada"}, status=404)

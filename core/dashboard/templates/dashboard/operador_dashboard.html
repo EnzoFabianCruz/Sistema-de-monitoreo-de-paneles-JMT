@@ -25,7 +25,7 @@
                         <th>Fecha</th>
                         <th>Zona</th>
                         <th>Responsable</th>
-                        <th>Estado</th>
+                        <th hidden>Estado</th>
                         <th>Acción</th>
                     </tr>
                 </thead>
@@ -36,7 +36,7 @@
                         <td>{{ r.FechaInspeccion }}</td>
                         <td>{{ r.ZonaInspeccion }}</td>
                         <td>{{ r.UsuarioCreacion }}</td> 
-                        <td>{{ r.EstadoRegistro }}</td>
+                        <td hidden>{{ r.EstadoRegistro }}</td>
                         <td>
                             <a href="{% url 'inspeccion_modificar' r.NumeroRegistro %}" class="btn btn-edit btn-sm">
                                 Modificar

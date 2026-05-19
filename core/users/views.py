@@ -45,7 +45,7 @@ def admin_dashboard(request):
 def detalle_inspeccion(request, numero_registro):
     inspeccion = get_object_or_404(InspeccionCampo, NumeroRegistro=numero_registro)
     # Traemos los detalles guardados
-    detalles_db = InspeccionCampoDetalle.objects.filter(NumeroRegistro=inspeccion).order_by("IdDetalle")
+    detalles_db = InspeccionCampoDetalle.objects.filter(NumeroRegistro=inspeccion).order_by("IdDetalle").prefetch_related('fotos')
     
     detalles_finales = []
     
@@ -99,6 +99,7 @@ def detalle_inspeccion(request, numero_registro):
             "EstadoLona": det.EstadoLona,
             "EstadoLogo": det.EstadoLogo,
             "Observaciones": det.Observaciones,
+            "fotos": list(det.fotos.all()), 
         }
         detalles_finales.append(item)
     

@@ -278,6 +278,19 @@ function cargarTabla(data) {
             <td>
                 <input type="text" name="observaciones[]" class="form-control form-control-sm">
             </td>
+            <td>
+                <button type="button" class="btn btn-outline-secondary btn-sm btn-foto"
+                        onclick="this.nextElementSibling.click()">
+                    <i class="bi bi-camera"></i> Fotos
+                    <span class="badge bg-secondary foto-count ms-1" style="display:none">0</span>
+                </button>
+                <input type="file" name="fotos_${item.CodigoUbicacion}[]"
+                    accept="image/*" multiple capture="environment"
+                    style="display:none"
+                    class="input-foto"
+                    onchange="actualizarPreviewFotos(this)">
+                <div class="foto-previews d-flex flex-wrap gap-1 mt-1"></div>
+            </td>
         </tr>
         `;
         tbody.insertAdjacentHTML("beforeend", fila);
@@ -322,14 +335,120 @@ document.addEventListener("change", function(e) {
 });
 function obtenerSeleccionados() {
     const seleccionados = new Set();
-
     document.querySelectorAll("#tabla-body tr").forEach(tr => {
         const check = tr.querySelector(".fila-check");
         if (check && check.checked) {
             seleccionados.add(tr.dataset.id);
         }
     });
-
     return seleccionados;
 }
+
+window.actualizarPreviewFotos = function(input) {
+    const container = input.nextElementSibling;
+    const badge = input.closest("td").querySelector(".btn-foto .foto-count");
+
+    // Acumular archivos con DataTransfer
+    const dt = new DataTransfer();
+    if (input._archivosAcumulados) {
+        input._archivosAcumulados.forEach(f => dt.items.add(f));
+    }
+    Array.from(input.files).forEach(f => dt.items.add(f));
+    input.files = dt.files;
+    input._archivosAcumulados = Array.from(dt.files);
+
+    // Re-renderizar todas las miniaturas
+    container.innerHTML = "";
+    input._archivosAcumulados.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = e => {
+            const thumb = document.createElement("div");
+            thumb.className = "foto-thumb position-relative";
+            thumb.style.cssText = "width:44px;height:44px;flex-shrink:0;";
+            thumb.innerHTML = `
+                <img src="${e.target.result}"
+                     data-preview="${e.target.result}"
+                     style="width:100%;height:100%;object-fit:cover;
+                            border-radius:4px;border:1px solid #ccc;cursor:zoom-in;">
+                <span data-nombre="${file.name}"
+                      onclick="event.stopPropagation();eliminarFotoNueva(this)"
+                      style="position:absolute;top:1px;right:1px;
+                             background:rgba(200,0,0,0.75);color:#fff;
+                             border-radius:50%;width:16px;height:16px;font-size:10px;
+                             display:flex;align-items:center;justify-content:center;
+                             cursor:pointer;line-height:1;font-weight:bold;">✕</span>`;
+            container.appendChild(thumb);
+        };
+        reader.readAsDataURL(file);
+    });
+
+    const total = input._archivosAcumulados.length;
+    badge.textContent = total;
+    badge.style.display = total > 0 ? "inline" : "none";
+};
+
+window.eliminarFotoNueva = function(btnEl) {
+    const td = btnEl.closest("td");
+    const input = td.querySelector(".input-foto");
+    const nombre = btnEl.dataset.nombre;
+    if (!input || !input._archivosAcumulados) return;
+
+    input._archivosAcumulados = input._archivosAcumulados.filter(f => f.name !== nombre);
+
+    const dt = new DataTransfer();
+    input._archivosAcumulados.forEach(f => dt.items.add(f));
+    input.files = dt.files;
+
+    btnEl.closest(".foto-thumb").remove();
+
+    const badge = td.querySelector(".btn-foto .foto-count");
+    const total = input._archivosAcumulados.length;
+    badge.textContent = total;
+    badge.style.display = total > 0 ? "inline" : "none";
+};
+
+window.actualizarContadorFoto = function(celda) {
+    if (!celda) return;
+    const thumbs = celda.querySelectorAll(".foto-thumb").length;
+    const badge = celda.querySelector(".foto-count");
+    if (!badge) return;
+    badge.textContent = thumbs;
+    badge.style.display = thumbs > 0 ? "inline" : "none";
+};
+
+document.addEventListener("click", function(e) {
+    const img = e.target.closest("img[data-preview]");
+    if (!img) return;
+    const modal = document.getElementById("modal-foto");
+    if (!modal) return;
+    document.getElementById("modal-foto-img").src = img.dataset.preview;
+    modal.style.display = "flex";
+});
+
+document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape") {
+        const modal = document.getElementById("modal-foto");
+        if (modal) modal.style.display = "none";
+    }
+});
+window.borrarFotoExistente = function(fotoId, btnEl) {
+    if (!confirm("¿Borrar esta foto?")) return;
+
+    fetch(`/inspeccion/foto/borrar/${fotoId}/`, {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.ok) {
+            const thumb = document.getElementById(`foto-thumb-${fotoId}`);
+            if (thumb) thumb.remove();
+        } else {
+            alert("Error al borrar la foto");
+        }
+    })
+    .catch(() => alert("Error de conexión"));
+};
 });

@@ -96,3 +96,19 @@ class Ubigeo2(models.Model):
     class Meta:
         db_table = 'UBIGEO2'
         managed = False
+
+class FotoDetalle(models.Model):
+    IdFoto = models.AutoField(primary_key=True, db_column='IdFoto')
+    detalle = models.ForeignKey(
+        InspeccionCampoDetalle,
+        db_column='IdDetalle',
+        on_delete=models.CASCADE,
+        related_name='fotos'
+    )
+    imagen = models.ImageField(upload_to='inspecciones/fotos/')
+    fecha_subida = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'FotoDetalle'
+        managed = False
+    

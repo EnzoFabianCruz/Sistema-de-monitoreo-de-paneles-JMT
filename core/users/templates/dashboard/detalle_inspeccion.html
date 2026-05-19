@@ -36,6 +36,7 @@
                             <th>Estado Lona</th>
                             <th>Logo</th>
                             <th>Obs.</th>
+                            <th>Fotos</th>
                         </tr>
                     </thead>
                                         <tbody id="tabla-body">
@@ -77,6 +78,18 @@
                             </td>
 
                             <td><small>{{ det.Observaciones|default:"-" }}</small></td>
+                            <td>
+                                {% for foto in det.fotos %}
+                                    <a href="{{ foto.imagen.url }}" target="_blank">
+                                        <img src="{{ foto.imagen.url }}" 
+                                            style="width:45px;height:45px;object-fit:cover;
+                                                    border-radius:4px;border:1px solid #ccc;
+                                                    margin:2px;">
+                                    </a>
+                                {% empty %}
+                                    <span class="text-muted">—</span>
+                                {% endfor %}
+                            </td>
                         </tr>
                         {% empty %}
                         <tr>
@@ -91,4 +104,21 @@
         </div>
     </div>
 </div>
+<div id="modal-foto" onclick="this.style.display='none'"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);
+            z-index:9999;align-items:center;justify-content:center;cursor:zoom-out;">
+    <img id="modal-foto-img" src=""
+         style="max-width:92vw;max-height:92vh;border-radius:8px;">
+</div>
+<script>
+document.addEventListener("click", function(e) {
+    const img = e.target.closest("img[data-preview]");
+    if (!img) return;
+    document.getElementById("modal-foto-img").src = img.dataset.preview;
+    document.getElementById("modal-foto").style.display = "flex";
+});
+document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape") document.getElementById("modal-foto").style.display = "none";
+});
+</script>
 {% endblock %}
