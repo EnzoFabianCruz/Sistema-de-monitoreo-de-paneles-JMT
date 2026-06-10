@@ -25,7 +25,7 @@ class InspeccionCampo(models.Model):
         )
         class Meta:
             db_table= 'InspeccionCampo'
-            managed= False
+            managed= True
 
 class InspeccionCampoDetalle(models.Model):
     IdDetalle = models.AutoField(primary_key=True)  # <--- así Django sabe que es autoincrement

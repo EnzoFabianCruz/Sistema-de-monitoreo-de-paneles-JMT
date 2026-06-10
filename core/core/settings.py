@@ -91,7 +91,20 @@ DATABASES = {
             'driver': config('DB_DRIVER'),
             'extra_params': 'TrustServerCertificate=no;'
         },
+    },
+    'BdInspeccion': {
+        'ENGINE': 'mssql',
+        'NAME': config('DB_NAME'),
+        'USER': config('DB_USER'),
+        'PASSWORD': config('DB_PASSWORD'),
+        'HOST': config('DB_HOST'),
+        'PORT': config('DB_PORT'),
+        'OPTIONS': {
+            'driver': config('DB_DRIVER'),
+            'extra_params': 'TrustServerCertificate=no;'
+        },
     }
+
 }
 
 # Password validation
