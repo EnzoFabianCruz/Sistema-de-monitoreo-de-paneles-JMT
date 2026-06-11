@@ -24,9 +24,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-d8#3!q)q1kk5*kj66ppgwkm!g_#udfmwy-v#%y#tmz_-j7rzt_'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = []
+# Agrega el dominio de Railway
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
