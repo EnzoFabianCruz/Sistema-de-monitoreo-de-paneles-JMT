@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     'accounts',
     'dashboard',
     'users',
-    
+
 ]
 
 MIDDLEWARE = [
@@ -92,18 +92,18 @@ DATABASES = {
             'extra_params': 'TrustServerCertificate=no;'
         },
     },
-    'BdInspeccion': {
-        'ENGINE': 'mssql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST'),
-        'PORT': config('DB_PORT'),
-        'OPTIONS': {
-            'driver': config('DB_DRIVER'),
-            'extra_params': 'TrustServerCertificate=no;'
-        },
-    }
+    # 'bdjmt': {
+    #     'ENGINE': 'mssql',
+    #     'NAME': config('DB_NAME1'),
+    #     'USER': config('DB_USER1'),
+    #     'PASSWORD': config('DB_PASSWORD1'),
+    #     'HOST': config('DB_HOST1'),
+    #     'PORT': config('DB_PORT1'),
+    #     'OPTIONS': {
+    #         'driver': config('DB_DRIVER1'),
+    #         'extra_params': 'TrustServerCertificate=no;'
+    #     },
+    # }
 
 }
 
@@ -157,3 +157,9 @@ LOGOUT_REDIRECT_URL = "login"
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    }
+}

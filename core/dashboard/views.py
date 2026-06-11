@@ -9,10 +9,7 @@ from django.db.models import Max
 from django.http import JsonResponse
 from datetime import date
 from django.db.models.functions import Trim
-
-from django.db.models.functions import Trim
-from django.contrib.auth.decorators import login_required
-from .models import InspeccionCampo
+from .jmt_client import get_ubicaciones, get_ubicaciones_dict, get_departamentos, get_ubigeo
 import os
 
 @login_required
@@ -43,62 +40,52 @@ def admin_dashboard(request):
 
 def ajax_provincias(request):
     dep = request.GET.get('dep')
+    try:
+        data = get_ubigeo()
+        provincias = [
+            {"CodigoProvincia": u["CodigoProvincia"].strip(), "Nombre": u["Nombre"]}
+            for u in data
+            if u["CodigoDepartamento"].strip() == dep
+            and u["CodigoDistrito"].strip() == "00"
+            and u["CodigoProvincia"].strip() != "00"
+        ]
+        provincias = sorted(provincias, key=lambda x: x["Nombre"])
+    except Exception:
+        provincias = []
+    return JsonResponse(provincias, safe=False)
 
-    provincias = Ubigeo2.objects.filter(
-        CodigoDepartamento=dep,
-        CodigoDistrito='00'
-    ).exclude(CodigoProvincia='00').values(
-        'CodigoProvincia','Nombre'
-    ).order_by('Nombre')
-
-    return JsonResponse(list(provincias), safe=False)
+def ajax_distritos(request):
+    dep  = request.GET.get('dep')
+    prov = request.GET.get('prov')
+    try:
+        data = get_ubigeo()
+        distritos = [
+            {"CodigoDistrito": u["CodigoDistrito"].strip(), "Nombre": u["Nombre"]}
+            for u in data
+            if u["CodigoDepartamento"].strip() == dep
+            and u["CodigoProvincia"].strip() == prov
+            and u["CodigoDistrito"].strip() != "00"
+        ]
+        distritos = sorted(distritos, key=lambda x: x["Nombre"])
+    except Exception:
+        distritos = []
+    return JsonResponse(distritos, safe=False)
 
 def ajax_ubicaciones(request):
-    dep = request.GET.get('dep')
+    dep  = request.GET.get('dep')
     prov = request.GET.get('prov')
-    dist = request.GET.get('dist')  # 🔥 NUEVO
+    dist = request.GET.get('dist')
 
-    filtros = {
-        "CodigoDepartamento": dep,
-        "CodigoProvincia": prov
-    }
+    try:
+        data = get_ubicaciones(dep=dep, prov=prov, dist=dist)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
 
-    # 🔥 SOLO SI ES LIMA LIMA → FILTRA DISTRITO
-    if dep == "15" and prov == "01" and dist:
-        filtros["CodigoDistrito"] = dist
-
-    data = Ubicacion.objects.filter(**filtros).values(
-        'CodigoUbicacion',
-        'CodigoInterno',
-        'DireccionComercial',
-        'CodigoProvincia',
-        'CodigoDistrito',
-        'CodigoTipoElemento',   # 👈 NUEVO
-        'Medidas'
-    )
-
-    result = []
-    for d in data:
-        result.append({
-            "CodigoUbicacion": d["CodigoUbicacion"],
-            "CodigoInterno": d["CodigoInterno"],
-            "DireccionComercial": d["DireccionComercial"],
-            "CodigoProvincia": d["CodigoProvincia"].strip() if d["CodigoProvincia"] else "",
-            "CodigoDistrito": d["CodigoDistrito"].strip() if d["CodigoDistrito"] else "",
-            "CodigoTipoElemento": d.get("CodigoTipoElemento"),  # 👈 NUEVO
-            "Medidas": d.get("Medidas"),                        # 👈 NUEVO
-        })
-
-    return JsonResponse(result, safe=False)
+    return JsonResponse(data, safe=False)
 
 @login_required
 def inspeccion_campo(request):
-    departamentos = (
-        Ubigeo2.objects.filter(CodigoProvincia='00', CodigoDistrito = '00')
-        .values('CodigoDepartamento', 'Nombre')
-        .distinct()
-        .order_by('Nombre')
-    )
+    departamentos = get_departamentos()
     provincias = []
     ubicaciones = []
 
@@ -300,42 +287,31 @@ def inspeccion_modificar(request, numero_registro):
     detalles = InspeccionCampoDetalle.objects.filter(NumeroRegistro=inspeccion).order_by("IdDetalle").prefetch_related('fotos')
     codigos = [d.Ubicacion for d in detalles]
 
-    ubicaciones_dict = {
-        u.CodigoUbicacion: u
-        for u in Ubicacion.objects.filter(CodigoUbicacion__in=codigos)
-    }
+    ubicaciones_dict = get_ubicaciones_dict()
 
     for det in detalles:
         u = ubicaciones_dict.get(det.Ubicacion)
-        det.CodigoTipoElemento = u.CodigoTipoElemento
-        det.TipoElemento = u.CodigoTipoElemento if u else ""
-        det.Medidas = u.Medidas if u else ""
-        det.Direccion = u.DireccionComercial if u else ""
-        det.CodigoInterno = u.CodigoInterno if u else ""
-        codigo_limpio = str(det.TipoElemento).strip()
-        det.CodigoUbicacion = det.Ubicacion
+        if u:
+            det.CodigoTipoElemento = u.get("CodigoTipoElemento", "")
+            det.TipoElemento       = u.get("CodigoTipoElemento", "")
+            det.Medidas            = u.get("Medidas", "")
+            det.Direccion          = u.get("DireccionComercial", "")
+            det.CodigoInterno      = u.get("CodigoInterno", "")
+        else:
+            det.CodigoTipoElemento = ""
+            det.TipoElemento       = ""
+            det.Medidas            = ""
+            det.Direccion          = ""
+            det.CodigoInterno      = ""
+        codigo_limpio         = str(det.TipoElemento).strip()
+        det.CodigoUbicacion   = det.Ubicacion
         det.DescripcionVisual = MAPA_TIPOS.get(codigo_limpio, codigo_limpio)
-    # ==============================
-    # DEPARTAMENTOS (LIMPIOS)
-    # ==============================
-    departamentos_raw = (
-        Ubigeo2.objects.filter(
-            CodigoProvincia='00',
-            CodigoDistrito='00'
-        )
-        .values('CodigoDepartamento', 'Nombre')
-        .distinct()
-        .order_by('Nombre')
-    )
-    
-    # 🔥 LIMPIAMOS ESPACIOS DE CHAR
-    departamentos = [
-        {
-            "CodigoDepartamento": d["CodigoDepartamento"].strip(),
-            "Nombre": d["Nombre"]
-        }
-        for d in departamentos_raw
-    ]
+
+
+    try:
+        departamentos = get_departamentos()
+    except Exception:
+        departamentos = []
 
     dep_seleccionado = None
     provincia_seleccionada = None
@@ -357,24 +333,17 @@ def inspeccion_modificar(request, numero_registro):
         else:
             zona_calculada = "P"
 
-        provincias_raw = (
-            Ubigeo2.objects.filter(
-                CodigoDepartamento=dep_seleccionado,
-                CodigoDistrito='00'
-            )
-            .exclude(CodigoProvincia='00')
-            .values('CodigoProvincia', 'Nombre')
-            .distinct()
-            .order_by('Nombre')
-        )
-
-        provincias = [
-            {
-                "CodigoProvincia": p["CodigoProvincia"].strip(),
-                "Nombre": p["Nombre"]
-            }
-            for p in provincias_raw
-        ]
+        try:
+            data = get_ubigeo()
+            provincias = sorted([
+                {"CodigoProvincia": u["CodigoProvincia"].strip(), "Nombre": u["Nombre"]}
+                for u in data
+                if u["CodigoDepartamento"].strip() == dep_seleccionado
+                and u["CodigoDistrito"].strip() == "00"
+                and u["CodigoProvincia"].strip() != "00"
+            ], key=lambda x: x["Nombre"])
+        except Exception:
+            provincias = []
     context = {
     "usuario_actual": request.user,
     "fecha_hoy": date.today(),
@@ -392,20 +361,6 @@ def inspeccion_modificar(request, numero_registro):
         request,
         "dashboard/inspeccion_operador.html",
         context
-    )
-def ajax_distritos(request):
-    dep = request.GET.get('dep')
-    prov = request.GET.get('prov')
-
-    distritos = (
-        Ubigeo2.objects
-        .filter(
-            CodigoDepartamento=dep,
-            CodigoProvincia=prov
-        )
-        .exclude(CodigoDistrito='00')
-        .values('CodigoDistrito', 'Nombre')
-        .order_by('Nombre')
     )
 
     return JsonResponse(list(distritos), safe=False)

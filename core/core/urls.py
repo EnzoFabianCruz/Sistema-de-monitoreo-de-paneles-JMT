@@ -21,6 +21,6 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include("accounts.urls")),
-    path('usuarios/', include('users.urls')), # <--- Ahora la URL será /usuarios/gestion-usuarios/
+    path('usuarios/', include('users.urls')), 
     path('', include('dashboard.urls')),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
