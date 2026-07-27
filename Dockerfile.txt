@@ -1,0 +1,29 @@
+FROM python:3.11-slim
+
+# Dependencias del sistema necesarias para compilar pymssql (FreeTDS)
+RUN apt-get update && apt-get install -y \
+    freetds-dev \
+    freetds-bin \
+    unixodbc-dev \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copia requirements primero (mejor cache de Docker)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copia el resto del proyecto (incluye la carpeta core/)
+COPY . .
+
+# Se mueve a donde está manage.py
+WORKDIR /app/core
+
+# Recolecta estáticos
+RUN python manage.py collectstatic --no-input
+
+EXPOSE 10000
+
+CMD python manage.py migrate && gunicorn core.wsgi:application --bind 0.0.0.0:10000
