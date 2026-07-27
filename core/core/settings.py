@@ -11,8 +11,10 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-# from decouple import config
+from dotenv import load_dotenv
 import os
+
+load_dotenv()  # <- esta línea carga el .env hacia os.environ
 
 def config(key, default=None):
     return os.environ.get(key, default)
@@ -145,7 +147,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [
     BASE_DIR / "static",  # solo si existe una carpeta global "static"
 ]
