@@ -287,7 +287,9 @@ def inspeccion_modificar(request, numero_registro):
     detalles = InspeccionCampoDetalle.objects.filter(NumeroRegistro=inspeccion).order_by("IdDetalle").prefetch_related('fotos')
     codigos = [d.Ubicacion for d in detalles]
 
-    ubicaciones_dict = get_ubicaciones_dict()
+    dep_para_ubicaciones = detalles[0].CodigoDepartamento.strip() if detalles else None
+    prov_para_ubicaciones = detalles[0].CodigoProvincia.strip() if detalles else None
+    ubicaciones_dict = get_ubicaciones_dict(dep=dep_para_ubicaciones, prov=prov_para_ubicaciones)
 
     for det in detalles:
         u = ubicaciones_dict.get(det.Ubicacion)
